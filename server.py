@@ -899,6 +899,87 @@ def create_draft(
         return _clean(f"Erreur lors de la création du brouillon: {str(e)}")
 
 
+@mcp.tool()
+def create_reply_draft(
+    entry_id: str,
+    body: str,
+    reply_all: bool = False,
+    store_id: Optional[str] = None,
+    open_window: bool = False
+) -> str:
+    """
+    Crée un brouillon de réponse à un e-mail existant dans Outlook (conserve le fil de discussion et l'historique).
+    Par défaut, le brouillon est enregistré en arrière-plan sans ouvrir de fenêtre.
+
+    Args:
+        entry_id: L'identifiant unique (EntryID) de l'e-mail auquel répondre.
+        body: Le texte de votre réponse (sera inséré en haut, au format Arial 10pt).
+        reply_all: Si True, répond à tous les participants (expéditeur et personnes en copie). Par défaut False.
+        store_id: Le StoreID du magasin contenant l'e-mail (optionnel mais recommandé).
+        open_window: Si True, affiche la fenêtre de composition dans Outlook (par défaut False).
+    """
+    try:
+        mapi = _get_mapi_namespace()
+        item = _open_item(mapi, entry_id, store_id)
+        reply = item.ReplyAll() if reply_all else item.Reply()
+
+        formatted_lines = body.replace("\r\n", "\n").replace("\n", "<br>")
+        html_snippet = f"""<div style="font-family: Arial, sans-serif; font-size: 10pt; color: #000000; line-height: 1.35;">
+{formatted_lines}
+</div><br>"""
+
+        # Insère la réponse au-dessus de l'historique et de la signature de réponse
+        reply.HTMLBody = html_snippet + reply.HTMLBody
+
+        if open_window:
+            reply.Display()
+
+        reply.Save()
+
+        target_str = _clean(_safe_get(reply, "To", "l'expéditeur"))
+        msg = f"Brouillon de réponse enregistré dans Outlook pour {target_str}"
+        if open_window:
+            msg += " (fenêtre affichée)"
+        return _clean(msg + ".")
+    except Exception as e:
+        return _clean(f"Erreur lors de la création du brouillon de réponse: {str(e)}")
+
+
+@mcp.tool()
+def reply_email(
+    entry_id: str,
+    body: str,
+    reply_all: bool = False,
+    store_id: Optional[str] = None
+) -> str:
+    """
+    Répond et envoie directement un e-mail dans le fil de discussion existant via Outlook.
+
+    Args:
+        entry_id: L'identifiant unique (EntryID) de l'e-mail auquel répondre.
+        body: Le texte de votre réponse (sera inséré en haut, au format Arial 10pt).
+        reply_all: Si True, répond à tous les participants (expéditeur et personnes en copie). Par défaut False.
+        store_id: Le StoreID du magasin contenant l'e-mail (optionnel mais recommandé).
+    """
+    try:
+        mapi = _get_mapi_namespace()
+        item = _open_item(mapi, entry_id, store_id)
+        reply = item.ReplyAll() if reply_all else item.Reply()
+
+        formatted_lines = body.replace("\r\n", "\n").replace("\n", "<br>")
+        html_snippet = f"""<div style="font-family: Arial, sans-serif; font-size: 10pt; color: #000000; line-height: 1.35;">
+{formatted_lines}
+</div><br>"""
+
+        reply.HTMLBody = html_snippet + reply.HTMLBody
+        reply.Send()
+
+        target_str = _clean(_safe_get(reply, "To", "destinataires"))
+        return _clean(f"Réponse envoyée avec succès à {target_str}.")
+    except Exception as e:
+        return _clean(f"Erreur lors de l'envoi de la réponse: {str(e)}")
+
+
 # =============================================================================
 # Outils MCP - Calendrier
 # =============================================================================

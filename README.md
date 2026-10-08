@@ -11,8 +11,10 @@ A fast, robust **Model Context Protocol (MCP)** server that connects local Micro
 - 📎 **Attachment Management (`list_attachments`, `save_attachments`)**:
   - Lists attachments with file names, sizes, and automatic detection of inline signature logos.
   - Extracts and saves attachments (PDF specs, Excel quotes, etc.) directly to a target directory without overwriting existing files.
-- ✍️ **Drafts & Emails (`create_draft`, `send_email`)**:
-  - Creates drafts or sends emails silently in the background without stealing focus or opening popup windows.
+- ✍️ **Drafts, Replies & Emails (`create_draft`, `send_email`, `create_reply_draft`, `reply_email`)**:
+  - Creates new emails or replies to existing threads (`In-Reply-To`, conversation history, quoted message preserved).
+  - Supports `reply_all=True` to reply to all participants.
+  - Generates drafts or sends messages silently in the background without stealing focus or opening popup windows.
   - Professional HTML formatting (Arial 10pt).
   - **Dynamic Signature Detection**: Automatically detects and applies the user's default signature from Outlook settings (via Windows Registry / Microsoft 365 Roaming Signatures).
 - 📅 **Calendar (`get_calendar_events`)**: Retrieves upcoming appointments and meetings with recurrence support.
@@ -101,8 +103,10 @@ Add to `mcp_config.json`:
 | `get_email_details` | Retrieves full body text, sender, dates, and attachment list using `entry_id` and optional `store_id`. |
 | `list_attachments` | Lists attachments of an email (index, filename, size, inline tag). |
 | `save_attachments` | Saves specified or all attachments to a target local folder. |
-| `send_email` | Sends an email via Outlook with clean HTML styling and default signature. |
-| `create_draft` | Creates an email draft silently (option to display via `open_window=True`). |
+| `send_email` | Sends a new email via Outlook with clean HTML styling and default signature. |
+| `create_draft` | Creates a new email draft silently (option to display via `open_window=True`). |
+| `create_reply_draft` | Creates a reply draft in an existing email thread (quotes history, preserves thread, option for `reply_all`). |
+| `reply_email` | Sends an immediate reply in an existing email thread (quotes history, preserves thread, option for `reply_all`). |
 | `get_calendar_events` | Retrieves upcoming calendar events for the next N days. |
 
 ---
