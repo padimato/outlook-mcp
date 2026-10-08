@@ -803,16 +803,37 @@ def _normalize_recipients(recipients: Optional[str]) -> str:
     return "; ".join(formatted)
 
 
+def _add_attachments(mail, attachment_paths: Optional[List[str]]) -> List[str]:
+    """
+    Ajoute des pièces jointes à un MailItem Outlook.
+    Résout les chemins absolus / relatifs / variables d'environnement.
+    Retourne la liste des noms de fichiers attachés.
+    """
+    if not attachment_paths:
+        return []
+    attached = []
+    for raw_p in attachment_paths:
+        if not raw_p or not str(raw_p).strip():
+            continue
+        p = os.path.abspath(os.path.expandvars(os.path.expanduser(str(raw_p).strip())))
+        if not os.path.isfile(p):
+            raise FileNotFoundError(f"Fichier introuvable pour pièce jointe : '{p}'")
+        mail.Attachments.Add(Source=p)
+        attached.append(os.path.basename(p))
+    return attached
+
+
 @mcp.tool()
 def send_email(
     to: str,
     subject: str,
     body: str,
     cc: Optional[str] = None,
-    bcc: Optional[str] = None
+    bcc: Optional[str] = None,
+    attachment_paths: Optional[List[str]] = None
 ) -> str:
     """
-    Envoie un e-mail directement via Outlook avec mise en forme HTML (Arial 10pt) et signature automatique.
+    Envoie un e-mail directement via Outlook avec mise en forme HTML (Arial 10pt), signature automatique et pièces jointes optionnelles.
     RÈGLE STRICTE : Les adresses de destinataires doivent impérativement être formatées sous la forme <adresse@domaine.com>.
     
     Args:
@@ -821,6 +842,7 @@ def send_email(
         body: Corps du message.
         cc: Destinataire(s) en copie au format <adresse@domaine.com> (optionnel).
         bcc: Destinataire(s) en copie cachée au format <adresse@domaine.com> (optionnel).
+        attachment_paths: Liste des chemins absolus ou relatifs des fichiers locaux à joindre à l'e-mail (optionnel).
     """
     try:
         outlook = _get_outlook_app()
@@ -837,11 +859,14 @@ def send_email(
         mail.Subject = subject
 
         _apply_body_and_default_signature(mail, body)
+        attached = _add_attachments(mail, attachment_paths)
 
         mail.Send()
         msg = f"E-mail envoyé avec succès à {clean_to}"
         if clean_cc:
             msg += f" (CC: {clean_cc})"
+        if attached:
+            msg += f" (Pièces jointes: {', '.join(attached)})"
         return _clean(msg + ".")
     except Exception as e:
         return _clean(f"Erreur lors de l'envoi de l'e-mail: {str(e)}")
@@ -853,10 +878,11 @@ def create_draft(
     body: str,
     cc: Optional[str] = None,
     bcc: Optional[str] = None,
+    attachment_paths: Optional[List[str]] = None,
     open_window: bool = False
 ) -> str:
     """
-    Crée un brouillon d'e-mail dans Outlook avec mise en forme HTML (Arial 10pt) et signature automatique.
+    Crée un brouillon d'e-mail dans Outlook avec mise en forme HTML (Arial 10pt), signature automatique et pièces jointes optionnelles.
     Par défaut, le brouillon est enregistré en arrière-plan sans ouvrir de fenêtre.
     RÈGLE STRICTE : Les adresses de destinataires doivent impérativement être formatées sous la forme <adresse@domaine.com>.
     
@@ -866,6 +892,7 @@ def create_draft(
         body: Contenu du message.
         cc: Destinataire(s) en copie au format <adresse@domaine.com> (optionnel).
         bcc: Destinataire(s) en copie cachée au format <adresse@domaine.com> (optionnel).
+        attachment_paths: Liste des chemins absolus ou relatifs des fichiers locaux à joindre au brouillon (optionnel).
         open_window: Si True, affiche la fenêtre de composition dans Outlook (par défaut False).
     """
     try:
@@ -883,6 +910,7 @@ def create_draft(
         mail.Subject = subject
 
         _apply_body_and_default_signature(mail, body)
+        attached = _add_attachments(mail, attachment_paths)
 
         if open_window:
             mail.Display()
@@ -894,6 +922,8 @@ def create_draft(
             msg += " (fenêtre affichée)"
         if clean_cc:
             msg += f" (CC: {clean_cc})"
+        if attached:
+            msg += f" (Pièces jointes: {', '.join(attached)})"
         return _clean(msg + ".")
     except Exception as e:
         return _clean(f"Erreur lors de la création du brouillon: {str(e)}")
@@ -904,6 +934,7 @@ def create_reply_draft(
     entry_id: str,
     body: str,
     reply_all: bool = False,
+    attachment_paths: Optional[List[str]] = None,
     store_id: Optional[str] = None,
     open_window: bool = False
 ) -> str:
@@ -915,6 +946,7 @@ def create_reply_draft(
         entry_id: L'identifiant unique (EntryID) de l'e-mail auquel répondre.
         body: Le texte de votre réponse (sera inséré en haut, au format Arial 10pt).
         reply_all: Si True, répond à tous les participants (expéditeur et personnes en copie). Par défaut False.
+        attachment_paths: Liste des chemins absolus ou relatifs des fichiers locaux à joindre à la réponse (optionnel).
         store_id: Le StoreID du magasin contenant l'e-mail (optionnel mais recommandé).
         open_window: Si True, affiche la fenêtre de composition dans Outlook (par défaut False).
     """
@@ -930,6 +962,7 @@ def create_reply_draft(
 
         # Insère la réponse au-dessus de l'historique et de la signature de réponse
         reply.HTMLBody = html_snippet + reply.HTMLBody
+        attached = _add_attachments(reply, attachment_paths)
 
         if open_window:
             reply.Display()
@@ -940,6 +973,8 @@ def create_reply_draft(
         msg = f"Brouillon de réponse enregistré dans Outlook pour {target_str}"
         if open_window:
             msg += " (fenêtre affichée)"
+        if attached:
+            msg += f" (Pièces jointes: {', '.join(attached)})"
         return _clean(msg + ".")
     except Exception as e:
         return _clean(f"Erreur lors de la création du brouillon de réponse: {str(e)}")
@@ -950,6 +985,7 @@ def reply_email(
     entry_id: str,
     body: str,
     reply_all: bool = False,
+    attachment_paths: Optional[List[str]] = None,
     store_id: Optional[str] = None
 ) -> str:
     """
@@ -959,6 +995,7 @@ def reply_email(
         entry_id: L'identifiant unique (EntryID) de l'e-mail auquel répondre.
         body: Le texte de votre réponse (sera inséré en haut, au format Arial 10pt).
         reply_all: Si True, répond à tous les participants (expéditeur et personnes en copie). Par défaut False.
+        attachment_paths: Liste des chemins absolus ou relatifs des fichiers locaux à joindre à la réponse (optionnel).
         store_id: Le StoreID du magasin contenant l'e-mail (optionnel mais recommandé).
     """
     try:
@@ -972,10 +1009,15 @@ def reply_email(
 </div><br>"""
 
         reply.HTMLBody = html_snippet + reply.HTMLBody
+        attached = _add_attachments(reply, attachment_paths)
+
         reply.Send()
 
         target_str = _clean(_safe_get(reply, "To", "destinataires"))
-        return _clean(f"Réponse envoyée avec succès à {target_str}.")
+        msg = f"Réponse envoyée avec succès à {target_str}"
+        if attached:
+            msg += f" (Pièces jointes: {', '.join(attached)})"
+        return _clean(msg + ".")
     except Exception as e:
         return _clean(f"Erreur lors de l'envoi de la réponse: {str(e)}")
 

@@ -103,10 +103,10 @@ Add to `mcp_config.json`:
 | `get_email_details` | Retrieves full body text, sender, dates, and attachment list using `entry_id` and optional `store_id`. |
 | `list_attachments` | Lists attachments of an email (index, filename, size, inline tag). |
 | `save_attachments` | Saves specified or all attachments to a target local folder. |
-| `send_email` | Sends a new email via Outlook with clean HTML styling and default signature. |
-| `create_draft` | Creates a new email draft silently (option to display via `open_window=True`). |
-| `create_reply_draft` | Creates a reply draft in an existing email thread (quotes history, preserves thread, option for `reply_all`). |
-| `reply_email` | Sends an immediate reply in an existing email thread (quotes history, preserves thread, option for `reply_all`). |
+| `send_email` | Sends a new email with optional attachments (`attachment_paths`), HTML styling, and default signature. |
+| `create_draft` | Creates a new email draft with optional attachments (`attachment_paths`) silently (option to display via `open_window=True`). |
+| `create_reply_draft` | Creates a reply draft in an existing email thread (quotes history, preserves thread, optional attachments, option for `reply_all`). |
+| `reply_email` | Sends an immediate reply in an existing email thread (quotes history, preserves thread, optional attachments, option for `reply_all`). |
 | `get_calendar_events` | Retrieves upcoming calendar events for the next N days. |
 
 ---
